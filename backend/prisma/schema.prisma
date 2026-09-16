@@ -11,3 +11,112 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum ExpenseType {
+  FIXED
+  VARIABLE
+}
+
+enum AccountType {
+  CASH
+  BANK
+  QRIS
+  OTHER
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+}
+
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String
+  role UserRole @default(STAFF)
+  transactions Transaction[]
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id String @id @default(uuid())
+  name String
+  type AccountType
+  initialBalance Decimal @db.Decimal(15,2)
+  isActive Boolean @default(true)
+
+  transactions Transaction[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt 
+}
+
+model Category {
+  id String @id @default(cuid())
+  name String
+  type TransactionType
+  expenseType ExpenseType?
+  description String?
+  isActive Boolean @default(true)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id String @id @default(uuid())
+  transactionDate DateTime
+  type TransactionType
+  amount Decimal @db.Decimal(15,2)
+  description String?
+
+  categoryId String
+  accountId String
+  createdById String
+
+  category Category @relation(fields: [categoryId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([transactionDate])
+  @@index([type])
+  @@index([categoryId])
+  @@index([accountId])
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+  userId String
+  action AuditAction
+  entity String
+  entityId String
+  oldData Json?
+  newData Json?
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+}
